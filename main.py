@@ -6,8 +6,6 @@ class bot:
         self.token = token
         self.offset = 0
 
-        self.who_am_i()
-
     def query(self, endp, dict={}, **kw):
         dict.update(kw)
         while 1:
@@ -22,6 +20,8 @@ class bot:
                 print('Timeout, retry...')
             except r.exceptions.SSLError as e: # common as we're in fucking China
                 print('SSLError', e)
+            except r.exceptions.ProxyError as e: # common as we're in fucking China
+                print('ProxyError', e)
             except KeyboardInterrupt as e:
                 sys.exit()
             except:
@@ -66,6 +66,7 @@ class bot:
             text = text,
             reply_to_message_id = reply_id,
         )
+        print('sent: (to){}: {}'.format(chat_id, text.replace('\n',' ')))
 
     def eat_updates(self):
         updates = self.get_updates()
@@ -79,9 +80,21 @@ class bot:
         else:
             print(u)
 
-    def on_message(self, m):
+    def on_message(self, msg):
         cid = msg['chat']['id']
-        self.send_message(cid, 'okay')
+        mid = msg['message_id']
+        fr = msg['from'] # user obj
+        firstname = fr['first_name']
+        uname = fr['username']
+        text = msg['text']
+
+        print('recv: {}: {}'.format(uname, text))
+
+        self.send_message(
+            cid,
+            'Okay, {}. Let me repeat, you just said:\n{}'.format(firstname, text.replace('\n',' ')),
+            reply_id=mid,
+        )
 
     def on_chat_msg(self, msg):
         pass
@@ -89,6 +102,6 @@ class bot:
 from creds import token
 
 b = bot(token)
-
+b.who_am_i()
 while 1:
     b.eat_updates()
