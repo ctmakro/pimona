@@ -5,5 +5,11 @@ because why not
 ## Important notes
 
 ```bash
-set SOCKS_PROXY=socks://127.0.0.1:1080
+pip install requests
+pip install requests[socks]
+pip install colorama
+pip install termcolor
+pip install certifi -U
 ```
+
+an instance of ArangoDB should run in the background.
