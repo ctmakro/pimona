@@ -15,6 +15,8 @@ print_up = cpg('yellow', attrs=['bold'])
 print_down = cpg('cyan', attrs=['bold'])
 print_err = cpg('red', attrs=['bold'])
 
+from threading import Lock
+
 class bot:
     def __init__(self, token, proxies):
         self.token = token
@@ -23,27 +25,34 @@ class bot:
 
         self.to_be_deleted = {}
         self.async_queue = {}
+        self.ql = Lock()
 
     def async_do(self, f, t):
         asq = self.async_queue
         while t in asq:
             t+=1
+        self.ql.acquire()
         asq[t] = f
+        self.ql.release()
         print_debug('async_queue length:', len(asq))
 
     def async_update(self):
         asq = self.async_queue
         now = time.time()
 
-        remove_list = []
+        rl = remove_list = []
 
+        self.ql.acquire()
         for t in asq:
             if now>t:
-                f = asq[t]
-                f()
-                remove_list.append(t)
+                rl.append(t)
+        self.ql.release()
 
-        for t in remove_list:
+        for t in rl:
+            f = asq[t]
+            f()
+
+        for t in rl:
             del asq[t]
 
         if len(remove_list):
@@ -79,7 +88,8 @@ class bot:
                         break
                     else:
                         print_err('response not ok')
-                        continue
+                        result = {}
+                        break
                 else:
                     print_err('field ok not in response json')
                     continue
@@ -224,9 +234,7 @@ def q_clearer():
     while 1:
         b.async_update()
         time.sleep(0.5)
-
-t = Thread(target=q_clearer, daemon=True)
-t.start()
+Thread(target=q_clearer, daemon=True).start()
 
 while 1:
     b.eat_updates()
