@@ -26,6 +26,8 @@ class bot:
 
     def async_do(self, f, t):
         asq = self.async_queue
+        while t in asq:
+            t+=1
         asq[t] = f
         print_debug('async_queue length:', len(asq))
 
@@ -111,12 +113,7 @@ class bot:
             chat_id, text,
             reply_id=None,
             silent=False,
-
-            vanish=None,
         ):
-
-        if vanish is not None:
-            text += '\n[\u23f1{:d}s]'.format(vanish)
 
         result = self.query('/sendMessage',
             chat_id = chat_id,
@@ -125,17 +122,6 @@ class bot:
             disable_notification = silent,
         )
         print_info('sent: (to){}: {}'.format(chat_id, text.replace('\n',' ')))
-
-        if vanish is not None:
-            # initiate a timed message
-            now = time.time()
-            date = result['date']
-
-            # there will be timeshift between server and client
-
-            mid = result['message_id']
-            cid = result['chat']['id']
-            self.del_message_after(cid, mid, now + vanish)
 
         return result
 
@@ -182,23 +168,51 @@ class bot:
 
         print_info('recv: (from)@{}: {}'.format(uname, text))
 
+        # bot messages should vanish after a certain period of time
+        vanish = 20 # seconds
+        tail = '\n[\u23f1{:d}s]'.format(vanish)
+
         # bot should only respond to messages that starts with a slash
-        regex = r"^\/([a-z]+)\ (.*)"
+        regex = r"^\/([a-z]+)(\ ?.*)"
         match = re.match(regex, text)
         if match is None:
-            self.send_message(cid,
-                'Sorry, but commands should look like "/<cmd> [params]".',
-                reply_id=mid,
-                vanish=10,
-            )
+            return # no response should be made
+            response = 'Sorry, but commands should look like "/<cmd> [params]".'
         else:
             cmd, param = match.group(1,2)
-            self.send_message(
-                cid,
-                'my designer is so lazy, he didn\'t teach me what "{}" and "{}" means.'.format(cmd, param),
-                reply_id = mid,
-                vanish = 30,
-            )
+            response = self.get_response(cmd, param)
+
+        result = self.send_message(
+            cid,
+            response + tail,
+            reply_id=mid,
+            silent=True,
+        )
+
+        vanish += time.time()
+        # date = result['date']
+        res_mid = result['message_id']
+        res_cid = result['chat']['id']
+
+        # delete the asking message
+        self.del_message_after(cid, mid, vanish)
+
+        # delete the response message to prevent polluting the group
+        self.del_message_after(res_cid, res_mid, vanish)
+
+    def get_response(self, cmd, param):
+        if not hasattr(self, 'qatable'):
+            self.qatable = {
+                'help':lambda x: 'help what? I\'m busy right now',
+                'warn':lambda x: 'I know how much you want to use this, but this is yet to be implemented.',
+            }
+
+        qt = self.qatable
+
+        if cmd in qt:
+            return qt[cmd](param)
+        else:
+            return 'my designer is so lazy, he hasn\'t teach me what "{}" means yet.'.format(cmd)
 
 from creds import token, proxies
 

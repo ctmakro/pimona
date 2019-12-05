@@ -9,7 +9,7 @@ def colored_print_generator(*a,**kw):
 
         # escape unsupported unicode in current encoding
         # (to prevent emojis from crashing CMD
-        text = text.encode(encoding='gbk', errors='replace').decode()
+        text = text.encode(encoding='gbk', errors='replace').decode(encoding='gbk')
 
         print(colored(text, *a,**kw),**incase)
     return colored_print
