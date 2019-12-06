@@ -14,8 +14,21 @@ def colored_print_generator(*a,**kw):
         print(colored(text, *a,**kw),**incase)
     return colored_print
 
+import pprint
+def prettify(json):
+    return pprint.pformat(json, indent=4, width=80, depth=None, compact=True)
+
+cpg = colored_print_generator
+
+print_info = cpg('green',)
+print_debug = cpg('yellow')
+print_up = cpg('yellow', attrs=['bold'])
+print_down = cpg('cyan', attrs=['bold'])
+print_err = cpg('red', attrs=['bold'])
+
 if __name__ == '__main__':
     cpg = colored_print_generator
     printredcyan = cpg('red', 'on_cyan')
 
     printredcyan('red', 'on_cyan')
+    print(prettify({'asd':'gerf','a':{'v':'b'}}))
